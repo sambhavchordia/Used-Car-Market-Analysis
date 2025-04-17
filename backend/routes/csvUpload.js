@@ -52,6 +52,46 @@ router.get('/cars', async (req, res) => {
   }
 });
 
+// Add endpoint to add a single car
+router.post('/cars', async (req, res) => {
+  try {
+    console.log('Received car data:', req.body);
+    // Basic validation (more robust validation can be added)
+    if (!req.body || !req.body.model_name || !req.body.price || !req.body.manufacturing_year) {
+        return res.status(400).json({ message: 'Missing required car fields (model_name, price, manufacturing_year)' });
+    }
+
+    // Create a new car instance using the Car model
+    const newCar = new Car({
+        model_name: req.body.model_name,
+        price: Number(req.body.price),
+        manufacturing_year: Number(req.body.manufacturing_year),
+        engine_capacity: req.body.engine_capacity || 'N/A', // Provide defaults if needed
+        spare_key: req.body.spare_key || 'No',
+        transmission: req.body.transmission || 'Manual',
+        km_driven: Number(req.body.km_driven) || 0,
+        ownership: req.body.ownership || 'Unknown',
+        fuel_type: req.body.fuel_type || 'Unknown',
+        imperfections: req.body.imperfections || 'None',
+        repainted_parts: req.body.repainted_parts || 'None',
+        region: req.body.region || 'Unknown'
+    });
+
+    // Save the new car to the database
+    const savedCar = await newCar.save();
+    console.log('Car saved successfully:', savedCar);
+
+    res.status(201).json({ message: 'Car added successfully!', car: savedCar });
+
+  } catch (error) {
+    console.error('Error adding car:', error);
+    if (error.name === 'ValidationError') {
+        return res.status(400).json({ message: 'Data validation failed: ' + error.message });
+    }
+    res.status(500).json({ message: 'Failed to add car data: ' + error.message });
+  }
+});
+
 // Basic file upload handler - just save the file and return success
 router.post('/upload', upload.single('file'), (req, res) => {
   try {

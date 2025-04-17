@@ -19,15 +19,25 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
-// Form validation schema
-const formSchema = z.object({
-  title: z.string().min(3, { message: 'Title must be at least 3 characters' }),
-  description: z.string().optional(),
-  category: z.string().min(1, { message: 'Category is required' }),
-  priority: z.string(),
-  dueDate: z.date().optional(),
-  status: z.string(),
+// --- Car Form Validation Schema ---
+const carFormSchema = z.object({
+  model_name: z.string().min(2, { message: 'Model name must be at least 2 characters' }),
+  price: z.coerce.number().positive({ message: 'Price must be a positive number' }),
+  manufacturing_year: z.coerce.number()
+    .min(1900, { message: 'Year must be 1900 or later' })
+    .max(new Date().getFullYear() + 1, { message: `Year cannot be in the future` }),
+  engine_capacity: z.string().optional(),
+  spare_key: z.enum(['Yes', 'No'], { required_error: 'Spare key information is required' }),
+  transmission: z.enum(['Automatic', 'Manual'], { required_error: 'Transmission type is required' }),
+  km_driven: z.coerce.number().nonnegative({ message: 'KM driven must be 0 or more' }),
+  ownership: z.string().min(1, { message: 'Ownership status is required' }), // Can be more specific if needed
+  fuel_type: z.string().min(1, { message: 'Fuel type is required' }),
+  imperfections: z.string().optional(),
+  repainted_parts: z.string().optional(),
+  region: z.string().min(2, { message: 'Region is required' }),
 });
+// --- End Car Form Schema ---
+
 
 const AddData = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,46 +46,61 @@ const AddData = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState({ text: '', type: '' });
 
-  // Initialize form with react-hook-form and zod validation
+  // --- Initialize form with Car Schema ---
   const form = useForm({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(carFormSchema),
     defaultValues: {
-      title: '',
-      description: '',
-      category: '',
-      priority: 'medium',
-      dueDate: undefined,
-      status: 'pending',
+      model_name: '',
+      price: '', // Keep as string initially for input field
+      manufacturing_year: '', // Keep as string initially for input field
+      engine_capacity: '',
+      spare_key: undefined,
+      transmission: undefined,
+      km_driven: '', // Keep as string initially for input field
+      ownership: '',
+      fuel_type: '',
+      imperfections: '',
+      repainted_parts: '',
+      region: '',
     },
   });
+  // --- End Form Initialization ---
 
-  const handleSubmit = async (values) => {
+  // --- Handle Manual Car Entry Submission ---
+  const handleCarSubmit = async (values) => {
     setIsSubmitting(true);
     setMessage({ text: '', type: '' });
+    console.log('Submitting car data:', values);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Form data submitted:', values);
-      
+      // POST data to the backend API endpoint for adding a single car
+      const response = await axios.post('http://localhost:5000/api/csv/cars', values, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('API Response:', response.data);
+
       form.reset();
-      
-      setMessage({ 
-        text: 'Data added successfully!', 
-        type: 'success' 
-      });
+      setMessage({ text: 'Car added successfully!', type: 'success' });
+
     } catch (error) {
-      console.error('Error submitting form:', error);
-      setMessage({ 
-        text: 'An error occurred. Please try again.', 
-        type: 'error' 
-      });
+      console.error('Error submitting car form:', error);
+      let errorMessage = 'An error occurred while adding the car. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      setMessage({ text: errorMessage, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
   };
+  // --- End Manual Car Entry Submission ---
 
+  // --- Handle CSV Upload (Existing Logic) ---
   const handleFileChange = (e) => {
     if (e.target.files.length > 0) {
       setCsvFile(e.target.files[0]);
@@ -85,21 +110,13 @@ const AddData = () => {
 
   const handleCsvUpload = async (e) => {
     e.preventDefault();
-    
+
     if (!csvFile) {
-      setUploadMessage({ 
-        text: 'Please select a CSV file first', 
-        type: 'error' 
-      });
+      setUploadMessage({ text: 'Please select a CSV file first', type: 'error' });
       return;
     }
-
-    // Validate file type
     if (!csvFile.name.endsWith('.csv')) {
-      setUploadMessage({ 
-        text: 'Only CSV files are allowed', 
-        type: 'error' 
-      });
+      setUploadMessage({ text: 'Only CSV files are allowed', type: 'error' });
       return;
     }
 
@@ -110,341 +127,327 @@ const AddData = () => {
       const formData = new FormData();
       formData.append('file', csvFile);
 
-      // Log the FormData content for debugging
-      console.log('Uploading file:', csvFile.name, 'Size:', csvFile.size, 'Type:', csvFile.type);
-
-      // Simple direct upload without dynamic hostname
-      const uploadResponse = await axios.post('http://localhost:5000/api/csv/upload', formData, {
+      // Use the combined upload/process endpoint
+      const response = await axios.post('http://localhost:5000/api/csv/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
-        },
-        withCredentials: true
+        }
       });
 
-      console.log('Upload response:', uploadResponse.data);
-      
-      // If basic upload succeeds, now process the file
-      setUploadMessage({ 
-        text: 'File uploaded successfully! Processing data...', 
-        type: 'success' 
-      });
-      
-      try {
-        // Process the uploaded file
-        const processResponse = await axios.post('http://localhost:5000/api/csv/process', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          withCredentials: true
-        });
-        
-        console.log('Process response:', processResponse.data);
-        
-        setCsvFile(null);
-        // Reset file input
-        document.getElementById('csv-file-input').value = '';
-        
-        setUploadMessage({ 
-          text: `CSV file processed successfully! ${processResponse.data.count || ''} records imported.`, 
-          type: 'success' 
-        });
-      } catch (processError) {
-        console.error('Error processing CSV:', processError);
-        setUploadMessage({ 
-          text: 'File uploaded but processing failed: ' + 
-                (processError.response?.data?.message || processError.message), 
-          type: 'error' 
-        });
-      }
+      console.log('Upload and process response:', response.data);
+      setCsvFile(null);
+      document.getElementById('csv-file-input').value = '';
+      setUploadMessage({ text: `CSV processed: ${response.data.message || 'Success'}`, type: 'success' });
+
     } catch (error) {
-      console.error('Error uploading CSV:', error);
-      // Show more detailed error information
-      let errorMessage = 'Failed to upload CSV file. Please try again.';
-      
-      if (error.response) {
-        // The request was made and the server responded with a status code outside 2xx
-        console.error('Error response data:', error.response.data);
-        console.error('Error response status:', error.response.status);
-        
-        errorMessage = error.response.data?.message || 
-                      `Server error: ${error.response.status} ${error.response.statusText}`;
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error('Error request:', error.request);
-        errorMessage = 'No response received from server. Please check your connection and that the backend server is running on port 5000.';
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error('Error message:', error.message);
-        errorMessage = `Error: ${error.message}`;
+      console.error('Error uploading/processing CSV:', error);
+      let errorMessage = 'Failed to upload or process CSV file. Please try again.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
-      
-      setUploadMessage({ 
-        text: errorMessage, 
-        type: 'error' 
-      });
+      setUploadMessage({ text: errorMessage, type: 'error' });
     } finally {
       setIsUploading(false);
     }
   };
+  // --- End CSV Upload Logic ---
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Add New Data</h2>
-          <p className="text-muted-foreground mt-2">Create a new entry or upload data from a CSV file.</p>
+          <h2 className="text-3xl font-bold tracking-tight">Add Car Data</h2>
+          <p className="text-muted-foreground mt-2">Manually add a new car entry or upload data from a CSV file.</p>
         </div>
 
-        {/* CSV Upload Section */}
+        {/* --- Manual Car Entry Form --- */}
         <Card>
           <CardHeader>
-            <CardTitle>Bulk Import Data</CardTitle>
+            <CardTitle>Add Single Car Entry</CardTitle>
+            <CardDescription>Fill in the details for the new car.</CardDescription>
+          </CardHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleCarSubmit)} className="space-y-6">
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <FormField
+                  control={form.control}
+                  name="model_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model Name <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Toyota Camry" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price (₹) <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 2500000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="manufacturing_year"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Manufacturing Year <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 2020" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="engine_capacity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Engine Capacity</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., 2.5L" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="spare_key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Spare Key <span className="text-red-500">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select option" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Yes">Yes</SelectItem>
+                          <SelectItem value="No">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="transmission"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Transmission <span className="text-red-500">*</span></FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select transmission type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Automatic">Automatic</SelectItem>
+                          <SelectItem value="Manual">Manual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="km_driven"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kilometers Driven <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 15000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="ownership"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ownership <span className="text-red-500">*</span></FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select ownership status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="First Owner">First Owner</SelectItem>
+                          <SelectItem value="Second Owner">Second Owner</SelectItem>
+                          <SelectItem value="Third Owner">Third Owner</SelectItem>
+                          <SelectItem value="Fourth Owner or More">Fourth Owner or More</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fuel_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fuel Type <span className="text-red-500">*</span></FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select fuel type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {/* Should ideally fetch these from a constant or API */}
+                          <SelectItem value="Petrol">Petrol</SelectItem>
+                          <SelectItem value="Diesel">Diesel</SelectItem>
+                          <SelectItem value="Electric">Electric</SelectItem>
+                          <SelectItem value="CNG">CNG</SelectItem>
+                          <SelectItem value="LPG">LPG</SelectItem>
+                          <SelectItem value="Hybrid">Hybrid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="imperfections"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Imperfections</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Minor scratches, Dent on bumper" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="repainted_parts"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Repainted Parts</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Front bumper, Left door" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="region"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Region <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., delhi, mumbai" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter className="flex justify-end">
+        {message.text && (
+                  <div className={`mr-4 text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+            {message.text}
+          </div>
+        )}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Adding Car...' : 'Add Car Entry'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        </Card>
+        {/* --- End Manual Car Entry Form --- */}
+
+        <Separator />
+
+        {/* --- CSV Upload Section (Existing) --- */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Bulk Import Cars via CSV</CardTitle>
             <CardDescription>
-              Upload a CSV file to import multiple entries at once.
+              Upload a CSV file to import multiple car entries at once.
             </CardDescription>
           </CardHeader>
-          
+
           {uploadMessage.text && (
-            <CardContent className="pt-0 pb-0">
-              <Alert variant={uploadMessage.type === 'success' ? 'default' : 'destructive'}>
-                <AlertTitle>{uploadMessage.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
-                <AlertDescription>{uploadMessage.text}</AlertDescription>
-              </Alert>
-            </CardContent>
-          )}
-          
+             <CardContent className="pt-0 pb-0">
+               <Alert variant={uploadMessage.type === 'success' ? 'default' : 'destructive'}>
+                 <AlertTitle>{uploadMessage.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
+                 <AlertDescription>{uploadMessage.text}</AlertDescription>
+               </Alert>
+             </CardContent>
+           )}
+
           <CardContent>
             <form onSubmit={handleCsvUpload} className="space-y-4">
               <div className="flex flex-col space-y-2">
                 <label htmlFor="csv-file-input" className="text-sm font-medium">
                   Select CSV File
-                </label>
-                <Input 
+            </label>
+                <Input
                   id="csv-file-input"
-                  type="file" 
-                  accept=".csv" 
+                  type="file"
+                  accept=".csv"
                   onChange={handleFileChange}
                   className="cursor-pointer"
                 />
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">
-                    File should be in CSV format with the following headers:
-                  </p>
-                  <a 
-                    href="/sample_cars.csv" 
-                    download 
-                    className="text-xs text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Download Sample CSV
-                  </a>
-                </div>
-                <div className="text-xs bg-muted p-2 rounded overflow-x-auto">
-                  <code>model_name,price,manufacturing_year,engine_capacity,spare_key,transmission,km_driven,ownership,fuel_type,imperfections,repainted_parts</code>
-                </div>
+                 <div className="flex justify-between items-center">
+                   <p className="text-sm text-muted-foreground">
+                     File should be in CSV format with headers matching the manual form fields.
+                   </p>
+                   <a
+                     href="/sample_cars.csv" // Make sure this sample file exists in public/
+                     download
+                     className="text-xs text-blue-600 hover:text-blue-800 underline"
+                   >
+                     Download Sample CSV
+            </a>
+          </div>
+                 {/* Optional: Display headers if needed */}
+                 {/* <div className="text-xs bg-muted p-2 rounded overflow-x-auto"> */}
+                 {/*   <code>model_name,price,manufacturing_year,...</code> */}
+                 {/* </div> */}
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isUploading || !csvFile}
                 className="w-full"
               >
                 {isUploading ? (
-                  <span className="flex items-center">
-                    <span className="mr-2">Uploading...</span>
-                  </span>
+                  'Uploading & Processing...'
                 ) : (
-                  <span className="flex items-center">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload CSV
-                  </span>
+                  <><Upload className="mr-2 h-4 w-4" /> Upload and Process CSV</>
                 )}
               </Button>
-            </form>
+        </form>
           </CardContent>
         </Card>
+        {/* --- End CSV Upload Section --- */}
 
-        <Separator className="my-4" />
-
-        {/* Manual Entry Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Manual Entry</CardTitle>
-            <CardDescription>
-              Fill in the information below to create a new record manually.
-            </CardDescription>
-          </CardHeader>
-          
-          {message.text && (
-            <CardContent className="pt-0 pb-0">
-              <Alert variant={message.type === 'success' ? 'default' : 'destructive'}>
-                <AlertTitle>{message.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
-                <AlertDescription>{message.text}</AlertDescription>
-              </Alert>
-            </CardContent>
-          )}
-          
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter title" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Enter description" 
-                          className="resize-none min-h-[100px]" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter category" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="priority"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Priority</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select priority" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Due Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <CardFooter className="flex justify-between px-0 pb-0">
-                  <Button 
-                    variant="outline" 
-                    type="button" 
-                    onClick={() => form.reset()}
-                  >
-                    Reset
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Submitting...' : 'Submit'}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
       </div>
     </Layout>
   );

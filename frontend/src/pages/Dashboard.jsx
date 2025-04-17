@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, Users, DollarSign, ArrowUp, ArrowDown, ShoppingCart, Car, Calendar, BarChart, Filter, PieChart } from "lucide-react";
+import { BarChart3, Users, DollarSign, ArrowUp, ArrowDown, ShoppingCart, Car, Calendar, BarChart, Filter, PieChart as PieChartIcon, MapPin } from "lucide-react";
 import Layout from '../components/Layout';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,14 +9,44 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PieChart } from "@/components/ui/pie-chart";
+import { MapChart } from "@/components/ui/map-chart";
+import { StackedBar } from "@/components/ui/stacked-bar";
+import { SimpleBar } from "@/components/ui/simple-bar";
+import CircularProgress from "@/components/ui/circular-progress";
+
+// Colors for charts
+const COLORS = [
+  '#4299E1', // blue-500
+  '#48BB78', // green-500
+  '#F6AD55', // orange-400
+  '#9F7AEA', // purple-500
+  '#F56565', // red-500
+  '#ED8936', // orange-500
+  '#38B2AC', // teal-500
+  '#667EEA', // indigo-500
+  '#FC8181', // red-400
+  '#68D391', // green-400
+  '#4FD1C5', // teal-400
+  '#A3BFFA', // indigo-300
+  '#FBD38D', // yellow-400
+  '#F687B3', // pink-400
+  '#B794F4', // purple-400
+];
 
 // Add sample data as fallback
 const sampleCarData = [
-  { model_name: "Toyota Camry", price: 2500000, manufacturing_year: 2020, engine_capacity: "2.5L", spare_key: "Yes", transmission: "Automatic", km_driven: 15000, ownership: "First Owner", fuel_type: "Petrol", imperfections: "Minor Scratches", repainted_parts: "None" },
-  { model_name: "Honda Accord", price: 2200000, manufacturing_year: 2019, engine_capacity: "2.0L", spare_key: "Yes", transmission: "Automatic", km_driven: 20000, ownership: "Second Owner", fuel_type: "Petrol", imperfections: "None", repainted_parts: "Front Bumper" },
-  { model_name: "Ford Mustang", price: 4500000, manufacturing_year: 2021, engine_capacity: "5.0L", spare_key: "Yes", transmission: "Manual", km_driven: 5000, ownership: "First Owner", fuel_type: "Petrol", imperfections: "None", repainted_parts: "None" },
-  { model_name: "Tesla Model 3", price: 4800000, manufacturing_year: 2022, engine_capacity: "Electric", spare_key: "Yes", transmission: "Automatic", km_driven: 8000, ownership: "First Owner", fuel_type: "Electric", imperfections: "None", repainted_parts: "None" },
-  { model_name: "BMW 3 Series", price: 3800000, manufacturing_year: 2020, engine_capacity: "2.0L", spare_key: "Yes", transmission: "Automatic", km_driven: 18000, ownership: "First Owner", fuel_type: "Diesel", imperfections: "Minor Scratches", repainted_parts: "Front Door" }
+  { model_name: "Toyota Camry", price: 2500000, manufacturing_year: 2020, engine_capacity: "2.5L", spare_key: "Yes", transmission: "Automatic", km_driven: 15000, ownership: "First Owner", fuel_type: "Petrol", imperfections: "Minor Scratches", repainted_parts: "None", region: "delhi" },
+  { model_name: "Honda Accord", price: 2200000, manufacturing_year: 2019, engine_capacity: "2.0L", spare_key: "Yes", transmission: "Automatic", km_driven: 20000, ownership: "Second Owner", fuel_type: "Petrol", imperfections: "None", repainted_parts: "Front Bumper", region: "mumbai" },
+  { model_name: "Ford Mustang", price: 4500000, manufacturing_year: 2021, engine_capacity: "5.0L", spare_key: "Yes", transmission: "Manual", km_driven: 5000, ownership: "First Owner", fuel_type: "Petrol", imperfections: "None", repainted_parts: "None", region: "bangalore" },
+  { model_name: "Tesla Model 3", price: 4800000, manufacturing_year: 2022, engine_capacity: "Electric", spare_key: "Yes", transmission: "Automatic", km_driven: 8000, ownership: "First Owner", fuel_type: "Electric", imperfections: "None", repainted_parts: "None", region: "pune" },
+  { model_name: "BMW 3 Series", price: 3800000, manufacturing_year: 2020, engine_capacity: "2.0L", spare_key: "Yes", transmission: "Automatic", km_driven: 18000, ownership: "First Owner", fuel_type: "Diesel", imperfections: "Minor Scratches", repainted_parts: "Front Door", region: "chennai" },
+  { model_name: "Audi A4", price: 3500000, manufacturing_year: 2021, engine_capacity: "2.0L", spare_key: "Yes", transmission: "Automatic", km_driven: 12000, ownership: "First Owner", fuel_type: "Petrol", imperfections: "None", repainted_parts: "None", region: "delhi" },
+  { model_name: "Hyundai Tucson", price: 2800000, manufacturing_year: 2022, engine_capacity: "2.0L", spare_key: "Yes", transmission: "Automatic", km_driven: 9000, ownership: "First Owner", fuel_type: "Diesel", imperfections: "None", repainted_parts: "None", region: "hyderabad" },
+  { model_name: "Mahindra XUV700", price: 2200000, manufacturing_year: 2022, engine_capacity: "2.2L", spare_key: "Yes", transmission: "Manual", km_driven: 7500, ownership: "First Owner", fuel_type: "Diesel", imperfections: "None", repainted_parts: "None", region: "lucknow" },
+  { model_name: "Kia Seltos", price: 1800000, manufacturing_year: 2021, engine_capacity: "1.5L", spare_key: "Yes", transmission: "Manual", km_driven: 10000, ownership: "First Owner", fuel_type: "Petrol", imperfections: "Minor Scratches", repainted_parts: "None", region: "jaipur" },
+  { model_name: "Tata Nexon", price: 1500000, manufacturing_year: 2022, engine_capacity: "1.5L", spare_key: "Yes", transmission: "Manual", km_driven: 5000, ownership: "First Owner", fuel_type: "Diesel", imperfections: "None", repainted_parts: "None", region: "kolkata" },
 ];
 
 const Dashboard = () => {
@@ -37,6 +67,9 @@ const Dashboard = () => {
   const [minPrice, setMinPrice] = useState(0);
   const [maxYear, setMaxYear] = useState(2024);
   const [minYear, setMinYear] = useState(1990);
+  
+  // Add state for chart tabs
+  const [analysisTab, setAnalysisTab] = useState("distribution");
   
   useEffect(() => {
     const fetchCarData = async () => {
@@ -229,6 +262,77 @@ const Dashboard = () => {
     } else {
       return `₹${price}`;
     }
+  };
+
+  // Additional utility functions for new chart data
+  const getRegionDistribution = (data) => {
+    if (!data.length) return [];
+    
+    const regions = {};
+    data.forEach(car => {
+      if (car.region) {
+        regions[car.region] = (regions[car.region] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(regions).map(([region, count]) => ({
+      region,
+      value: count
+    }));
+  };
+
+  const getPriceByFuelType = (data) => {
+    if (!data.length) return [];
+    
+    // Group cars by model and calculate stats
+    const modelStats = {};
+    data.forEach(car => {
+      if (!modelStats[car.model_name]) {
+        modelStats[car.model_name] = {
+          name: car.model_name,
+          Petrol: 0,
+          Diesel: 0,
+          Electric: 0,
+          Hybrid: 0,
+          CNG: 0,
+          Other: 0,
+          totalPrice: 0,
+          count: 0
+        };
+      }
+      
+      // Add price to appropriate fuel type
+      const fuelType = car.fuel_type || 'Other';
+      if (['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG'].includes(fuelType)) {
+        modelStats[car.model_name][fuelType] += 1;
+      } else {
+        modelStats[car.model_name].Other += 1;
+      }
+      
+      modelStats[car.model_name].totalPrice += car.price;
+      modelStats[car.model_name].count += 1;
+    });
+    
+    // Convert to array and sort by total price
+    return Object.values(modelStats)
+      .map(stat => ({
+        ...stat,
+        averagePrice: stat.totalPrice / stat.count
+      }))
+      .sort((a, b) => b.totalPrice - a.totalPrice)
+      .slice(0, 5); // Top 5 models by total value
+  };
+
+  const getOwnershipData = (data) => {
+    if (!data.length) return [];
+    
+    const ownershipCounts = {};
+    data.forEach(car => {
+      const ownership = car.ownership || 'Unknown';
+      ownershipCounts[ownership] = (ownershipCounts[ownership] || 0) + 1;
+    });
+    
+    return Object.entries(ownershipCounts).map(([name, value]) => ({ name, value }));
   };
 
   return (
@@ -435,142 +539,316 @@ const Dashboard = () => {
           </Card>
         </div>
         
-        {/* Charts */}
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {/* Distribution by Fuel Type */}
-          <Card className="col-span-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center text-lg">
-                <PieChart className="mr-2 h-5 w-5" /> Fuel Type Distribution
-              </CardTitle>
-              <CardDescription>
-                Cars by fuel type
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-y-auto max-h-[350px]">
-              {loading ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-muted-foreground">Loading data...</p>
-                </div>
-              ) : error && !filteredData.length ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-red-500">{error}</p>
-                </div>
-              ) : Object.keys(getFuelTypeCounts()).length === 0 ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-muted-foreground">No data available</p>
-                </div>
-              ) : (
-                <div className="space-y-6 p-2">
-                  {Object.entries(getFuelTypeCounts()).map(([fuelType, count]) => {
-                    const percentage = (count / filteredData.length) * 100;
-                    return (
-                      <div key={fuelType} className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-sm">{fuelType}</span>
-                          <span className="text-sm text-muted-foreground">{count} cars ({percentage.toFixed(1)}%)</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-4">
-                          <div 
-                            className="bg-blue-600 h-4 rounded-full transition-all duration-500 flex items-center justify-end px-2"
-                            style={{ width: `${Math.max(percentage, 5)}%` }}
-                          >
-                            {percentage > 15 && (
-                              <span className="text-xs text-white font-medium">{percentage.toFixed(0)}%</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Chart Analysis Tabs */}
+        <Tabs defaultValue="distribution" value={analysisTab} onValueChange={setAnalysisTab} className="w-full">
+          <TabsList className="w-full justify-start overflow-x-auto">
+            <TabsTrigger value="distribution">Distribution</TabsTrigger>
+            <TabsTrigger value="regional">Regional Analysis</TabsTrigger>
+            <TabsTrigger value="comparison">Model Comparison</TabsTrigger>
+            <TabsTrigger value="ownership">Ownership</TabsTrigger>
+          </TabsList>
           
-          {/* Distribution by Transmission */}
-          <Card className="col-span-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center text-lg">
-                <PieChart className="mr-2 h-5 w-5" /> Transmission Distribution
-              </CardTitle>
-              <CardDescription>
-                Cars by transmission type
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-y-auto max-h-[350px]">
-              {loading ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-muted-foreground">Loading data...</p>
-                </div>
-              ) : error && !filteredData.length ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-red-500">{error}</p>
-                </div>
-              ) : Object.keys(getTransmissionCounts()).length === 0 ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-muted-foreground">No data available</p>
-                </div>
-              ) : (
-                <div className="space-y-6 p-2">
-                  {Object.entries(getTransmissionCounts()).map(([transmission, count]) => {
-                    const percentage = (count / filteredData.length) * 100;
-                    return (
-                      <div key={transmission} className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-sm">{transmission}</span>
-                          <span className="text-sm text-muted-foreground">{count} cars ({percentage.toFixed(1)}%)</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-4">
-                          <div 
-                            className="bg-green-600 h-4 rounded-full transition-all duration-500 flex items-center justify-end px-2"
-                            style={{ width: `${Math.max(percentage, 5)}%` }}
-                          >
-                            {percentage > 15 && (
-                              <span className="text-xs text-white font-medium">{percentage.toFixed(0)}%</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Recent Cars */}
-          <Card className="col-span-1">
-            <CardHeader>
-              <CardTitle>Recent Cars</CardTitle>
-              <CardDescription>
-                {loading ? 'Loading...' : `Showing ${filteredData.length} of ${carData.length} cars`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <p className="text-center py-8 text-muted-foreground">Loading cars...</p>
-              ) : error ? (
-                <p className="text-center py-8 text-red-500">{error}</p>
-              ) : (
-                <div className="space-y-4">
-                  {filteredData.slice(0, 5).map((car, i) => (
-                    <div key={i} className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                        <Car className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium leading-none">{car.model_name}</p>
-                        <p className="text-sm text-muted-foreground">{car.manufacturing_year} • {car.fuel_type}</p>
-                      </div>
-                      <div className="font-medium">{formatPrice(car.price)}</div>
+          {/* Distribution Tab */}
+          <TabsContent value="distribution" className="mt-4">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {/* Fuel Type Distribution as Pie Chart */}
+              <Card className="col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center text-lg">
+                    <PieChartIcon className="mr-2 h-5 w-5" /> Fuel Type Distribution
+                  </CardTitle>
+                  <CardDescription>
+                    Cars by fuel type (Pie Chart)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  {loading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-muted-foreground">Loading data...</p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  ) : error && !filteredData.length ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full relative">
+                      <PieChart 
+                        data={Object.entries(getFuelTypeCounts()).map(([name, value]) => ({ name, value }))}
+                        nameKey="name"
+                        valueKey="value"
+                        showLabels={true}
+                        tooltip="chart-tooltip"
+                      />
+                      <div className="absolute bottom-4 right-4 bg-white/80 p-2 rounded text-xs shadow">
+                        {Object.entries(getFuelTypeCounts()).map(([name, value], index) => (
+                          <div key={name} className="flex items-center gap-1 mb-1">
+                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                            <span>{name} ({value})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {/* Transmission as Donut Chart */}
+              <Card className="col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center text-lg">
+                    <PieChartIcon className="mr-2 h-5 w-5" /> Transmission Distribution
+                  </CardTitle>
+                  <CardDescription>
+                    Cars by transmission type (Donut Chart)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  {loading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-muted-foreground">Loading data...</p>
+                    </div>
+                  ) : error && !filteredData.length ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full relative">
+                      <PieChart 
+                        data={Object.entries(getTransmissionCounts()).map(([name, value]) => ({ name, value }))}
+                        nameKey="name"
+                        valueKey="value"
+                        innerRadius={25}
+                        showLabels={true}
+                        tooltip="chart-tooltip"
+                      />
+                      <div className="absolute bottom-4 right-4 bg-white/80 p-2 rounded text-xs shadow">
+                        {Object.entries(getTransmissionCounts()).map(([name, value], index) => (
+                          <div key={name} className="flex items-center gap-1 mb-1">
+                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                            <span>{name} ({value})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {/* Price Distribution */}
+              <Card className="col-span-1 lg:col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center text-lg">
+                    <BarChart className="mr-2 h-5 w-5" /> Price Distribution
+                  </CardTitle>
+                  <CardDescription>
+                    Cars by price range (in lakhs)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="relative">
+                  {loading ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground">Loading data...</p>
+                    </div>
+                  ) : error && !filteredData.length ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : Object.keys(getPriceDistribution()).length === 0 ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground">No data available</p>
+                    </div>
+                  ) : (
+                    <div className="h-[250px] overflow-x-auto overflow-y-hidden max-w-full">
+                      <div className="flex items-end justify-center gap-1 pt-4 mt-4 min-w-[500px] h-[220px]">
+                        {(() => {
+                          // Find the maximum count to calculate relative heights
+                          const counts = Object.values(getPriceDistribution());
+                          const maxCount = Math.max(...counts);
+                          const maxHeight = 200; // Maximum height in pixels
+                          
+                          return Object.entries(getPriceDistribution()).map(([priceRange, count]) => {
+                            // Calculate relative height
+                            const relativeHeight = Math.max((count / maxCount) * maxHeight, 20);
+                            
+                            return (
+                              <div key={priceRange} className="flex flex-col items-center">
+                                <div 
+                                  className="bg-green-500 w-8 rounded-t-md hover:bg-green-600 transition-colors"
+                                  style={{ height: `${relativeHeight}px` }}
+                                >
+                                  <div className="invisible">.</div>
+                                </div>
+                                <div className="text-xs mt-2 text-center">
+                                  <div className="font-medium">{priceRange}</div>
+                                  <div className="text-muted-foreground">{count} cars</div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          {/* Regional Analysis Tab */}
+          <TabsContent value="regional" className="mt-4">
+            <div className="grid gap-4 grid-cols-1">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center text-lg">
+                    <MapPin className="mr-2 h-5 w-5" /> Regional Distribution
+                  </CardTitle>
+                  <CardDescription>
+                    Car distribution by region (Map Chart)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-[400px]">
+                  {loading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-muted-foreground">Loading data...</p>
+                    </div>
+                  ) : error && !filteredData.length ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full overflow-auto relative">
+                      <div className="min-w-[320px] min-h-[350px] w-full h-full">
+                        <MapChart 
+                          data={getRegionDistribution(filteredData)}
+                          idKey="region"
+                          valueKey="value"
+                          tooltip="chart-tooltip"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          {/* Model Comparison Tab */}
+          <TabsContent value="comparison" className="mt-4">
+            <div className="grid gap-4 grid-cols-1">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center text-lg">
+                    <BarChart3 className="mr-2 h-5 w-5" /> Model Comparison by Fuel Type
+                  </CardTitle>
+                  <CardDescription>
+                    Top car models by fuel type distribution (Stacked Bar Chart)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-[400px]">
+                  {loading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-muted-foreground">Loading data...</p>
+                    </div>
+                  ) : error && !filteredData.length ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-full">
+                      <div className="w-full h-full overflow-x-auto">
+                        <div className="min-w-[500px] min-h-[350px] w-full h-full">
+                          <StackedBar 
+                            data={getPriceByFuelType(filteredData)}
+                            keys={['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG', 'Other']}
+                            indexBy="name"
+                            layout="horizontal"
+                            tooltip="chart-tooltip"
+                          />
+                        </div>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 h-6 pointer-events-none bg-gradient-to-r from-transparent via-transparent to-background/80"></div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          {/* Ownership Tab */}
+          <TabsContent value="ownership" className="mt-4">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center text-lg">
+                    <Users className="mr-2 h-5 w-5" /> Ownership Distribution
+                  </CardTitle>
+                  <CardDescription>
+                    Cars by ownership status (Donut Chart)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  {loading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-muted-foreground">Loading data...</p>
+                    </div>
+                  ) : error && !filteredData.length ? (
+                    <div className="h-full flex items-center justify-center">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full relative">
+                      <PieChart 
+                        data={getOwnershipData(filteredData)}
+                        innerRadius={30}
+                        showLabels={true}
+                        tooltip="chart-tooltip"
+                      />
+                      <div className="absolute bottom-4 right-4 bg-white/80 p-2 rounded text-xs shadow">
+                        {getOwnershipData(filteredData).map((item, index) => (
+                          <div key={item.name} className="flex items-center gap-1 mb-1">
+                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                            <span>{item.name} ({item.value})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card className="col-span-12 md:col-span-6">
+                <CardHeader>
+                  <CardTitle>Top Models</CardTitle>
+                  <CardDescription>Most common car models in inventory</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <CircularProgress />
+                    </div>
+                  ) : error ? (
+                    <div className="flex items-center justify-center h-full text-red-500">
+                      Error loading data
+                    </div>
+                  ) : getTopModels().length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      No model data available
+                    </div>
+                  ) : (
+                    <SimpleBar
+                      data={getTopModels().slice(0, 8)}
+                      valueKey="count"
+                      labelKey="model"
+                      colors={['#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE', '#DBEAFE', '#EFF6FF']}
+                      layout="horizontal"
+                      tooltip="chart-tooltip"
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
         
         {/* Advanced Charts */}
         <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
@@ -584,40 +862,56 @@ const Dashboard = () => {
                 Cars by manufacturing year range
               </CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-              {loading ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-muted-foreground">Loading data...</p>
-                </div>
-              ) : error && !filteredData.length ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-red-500">{error}</p>
-                </div>
-              ) : Object.keys(getYearDistribution()).length === 0 ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-muted-foreground">No data available</p>
-                </div>
-              ) : (
-                <div className="h-[250px] flex items-end justify-between gap-2 pt-4 mt-4 min-w-[500px]">
-                  {Object.entries(getYearDistribution()).map(([yearRange, count]) => {
-                    const percentage = (count / filteredData.length) * 100;
-                    return (
-                      <div key={yearRange} className="flex flex-col items-center">
-                        <div 
-                          className="bg-blue-500 w-14 rounded-t-md hover:bg-blue-600 transition-colors"
-                          style={{ height: `${Math.max(percentage * 2.5, 10)}%` }}
-                        >
-                          <div className="invisible">.</div>
-                        </div>
-                        <div className="text-xs mt-2 text-center">
-                          <div className="font-medium">{yearRange}</div>
-                          <div className="text-muted-foreground">{count} cars</div>
-                        </div>
+            <CardContent>
+              <div className="relative">
+                <div className="overflow-x-auto max-w-full pb-2">
+                  {loading ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground">Loading data...</p>
+                    </div>
+                  ) : error && !filteredData.length ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : Object.keys(getYearDistribution()).length === 0 ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground">No data available</p>
+                    </div>
+                  ) : (
+                    <div className="h-[250px] overflow-x-auto overflow-y-hidden max-w-full">
+                      <div className="flex items-end justify-center gap-1 pt-4 mt-4 min-w-[500px] h-[220px]">
+                        {(() => {
+                          // Find the maximum count to calculate relative heights
+                          const counts = Object.values(getYearDistribution());
+                          const maxCount = Math.max(...counts);
+                          const maxHeight = 200; // Maximum height in pixels
+                          
+                          return Object.entries(getYearDistribution()).map(([yearRange, count]) => {
+                            // Calculate relative height
+                            const relativeHeight = Math.max((count / maxCount) * maxHeight, 20);
+                            
+                            return (
+                              <div key={yearRange} className="flex flex-col items-center">
+                                <div 
+                                  className="bg-blue-500 w-8 rounded-t-md hover:bg-blue-600 transition-colors"
+                                  style={{ height: `${relativeHeight}px` }}
+                                >
+                                  <div className="invisible">.</div>
+                                </div>
+                                <div className="text-xs mt-2 text-center">
+                                  <div className="font-medium">{yearRange}</div>
+                                  <div className="text-muted-foreground">{count} cars</div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
                 </div>
-              )}
+                <div className="absolute bottom-0 left-0 right-0 h-6 pointer-events-none bg-gradient-to-r from-transparent via-transparent to-background/80"></div>
+              </div>
             </CardContent>
           </Card>
           
@@ -631,84 +925,59 @@ const Dashboard = () => {
                 Cars by price range (in lakhs)
               </CardDescription>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
-              {loading ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-muted-foreground">Loading data...</p>
-                </div>
-              ) : error && !filteredData.length ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-red-500">{error}</p>
-                </div>
-              ) : Object.keys(getPriceDistribution()).length === 0 ? (
-                <div className="h-[250px] flex items-center justify-center">
-                  <p className="text-muted-foreground">No data available</p>
-                </div>
-              ) : (
-                <div className="h-[250px] flex items-end justify-between gap-2 pt-4 mt-4 min-w-[500px]">
-                  {Object.entries(getPriceDistribution()).map(([priceRange, count]) => {
-                    const percentage = (count / filteredData.length) * 100;
-                    return (
-                      <div key={priceRange} className="flex flex-col items-center">
-                        <div 
-                          className="bg-green-500 w-14 rounded-t-md hover:bg-green-600 transition-colors"
-                          style={{ height: `${Math.max(percentage * 2.5, 10)}%` }}
-                        >
-                          <div className="invisible">.</div>
-                        </div>
-                        <div className="text-xs mt-2 text-center">
-                          <div className="font-medium">{priceRange}</div>
-                          <div className="text-muted-foreground">{count} cars</div>
-                        </div>
+            <CardContent>
+              <div className="relative">
+                <div className="overflow-x-auto max-w-full pb-2">
+                  {loading ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground">Loading data...</p>
+                    </div>
+                  ) : error && !filteredData.length ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : Object.keys(getPriceDistribution()).length === 0 ? (
+                    <div className="h-[250px] flex items-center justify-center">
+                      <p className="text-muted-foreground">No data available</p>
+                    </div>
+                  ) : (
+                    <div className="h-[250px] overflow-x-auto overflow-y-hidden max-w-full">
+                      <div className="flex items-end justify-center gap-1 pt-4 mt-4 min-w-[500px] h-[220px]">
+                        {(() => {
+                          // Find the maximum count to calculate relative heights
+                          const counts = Object.values(getPriceDistribution());
+                          const maxCount = Math.max(...counts);
+                          const maxHeight = 200; // Maximum height in pixels
+                          
+                          return Object.entries(getPriceDistribution()).map(([priceRange, count]) => {
+                            // Calculate relative height
+                            const relativeHeight = Math.max((count / maxCount) * maxHeight, 20);
+                            
+                            return (
+                              <div key={priceRange} className="flex flex-col items-center">
+                                <div 
+                                  className="bg-green-500 w-8 rounded-t-md hover:bg-green-600 transition-colors"
+                                  style={{ height: `${relativeHeight}px` }}
+                                >
+                                  <div className="invisible">.</div>
+                                </div>
+                                <div className="text-xs mt-2 text-center">
+                                  <div className="font-medium">{priceRange}</div>
+                                  <div className="text-muted-foreground">{count} cars</div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
-                    );
-                  })}
+                    </div>
+                  )}
                 </div>
-              )}
+                <div className="absolute bottom-0 left-0 right-0 h-6 pointer-events-none bg-gradient-to-r from-transparent via-transparent to-background/80"></div>
+              </div>
             </CardContent>
           </Card>
         </div>
-        
-        {/* Top Models */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Car Models</CardTitle>
-            <CardDescription>
-              Most common car models in the inventory
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-center py-8 text-muted-foreground">Loading models...</p>
-            ) : error ? (
-              <p className="text-center py-8 text-red-500">{error}</p>
-            ) : (
-              <div className="space-y-6 p-2">
-                {getTopModels().map((item, i) => {
-                  const percentage = (item.count / filteredData.length) * 100;
-                  return (
-                    <div key={i} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-sm">{item.model}</span>
-                        <span className="text-sm text-muted-foreground">{item.count} cars ({percentage.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-4">
-                        <div 
-                          className="bg-purple-600 h-4 rounded-full transition-all duration-500 flex items-center justify-end px-2"
-                          style={{ width: `${Math.max(percentage, 5)}%` }}
-                        >
-                          {percentage > 15 && (
-                            <span className="text-xs text-white font-medium">{percentage.toFixed(0)}%</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </Layout>
   );
