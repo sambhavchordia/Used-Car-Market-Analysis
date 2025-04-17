@@ -1,0 +1,6 @@
+model_name,price,manufacturing_year,engine_capacity,spare_key,transmission,km_driven,ownership,fuel_type,imperfections,repainted_parts
+Toyota Camry,25000,2020,2.5L,Yes,Automatic,15000,First Owner,Petrol,Minor Scratches,None
+Honda Accord,22000,2019,2.0L,Yes,Automatic,20000,Second Owner,Petrol,None,Front Bumper
+Ford Mustang,45000,2021,5.0L,Yes,Manual,5000,First Owner,Petrol,None,None
+Tesla Model 3,48000,2022,Electric,Yes,Automatic,8000,First Owner,Electric,None,None
+BMW 3 Series,38000,2020,2.0L,Yes,Automatic,18000,First Owner,Diesel,Minor Scratches,Front Door 
